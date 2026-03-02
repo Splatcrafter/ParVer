@@ -19,8 +19,9 @@ gantt
     Pflichtenheft & Zeitplanung    :done, p2, 2026-02-27, 1d
     
     section Entwicklung
-    Projektstruktur & DB-Design    :active, e1, 2026-03-02, 1d
-    PWA-Setup & UI-Grundgerüst     :active, e2, 2026-03-02, 1d
+    Infrastruktur & PWA-Prototyp   :active, e1, 2026-03-02, 0.4d
+    Präsentation PWA Test-App      :crit, active, e2, 2026-03-02, 0.1d
+    Fortführung Implementierung    :e1b, 2026-03-02, 0.4d
     API-Anbindung & Logik          :e3, 2026-03-03, 1d
     Raster-Visualisierung          :e4, 2026-03-03, 1d
     Echtzeit-Sync & Push-Dienst    :e5, 2026-03-04, 1d

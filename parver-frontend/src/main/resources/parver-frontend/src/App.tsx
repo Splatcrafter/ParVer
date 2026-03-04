@@ -1,11 +1,32 @@
 import { Routes, Route } from "react-router-dom"
+import { ProtectedRoute } from "@/components/auth/protected-route"
 import ParkingPage from "@/pages/ParkingPage"
+import LoginPage from "@/pages/LoginPage"
+import SetupPage from "@/pages/SetupPage"
+import AdminPage from "@/pages/AdminPage"
 import ErrorPage from "@/pages/ErrorPage"
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<ParkingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/administration/setup" element={<SetupPage />} />
+      <Route
+        path="/administration/users"
+        element={
+          <ProtectedRoute requireAdmin={true}>
+            <AdminPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <ParkingPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<ErrorPage />} />
     </Routes>
   )

@@ -2,8 +2,10 @@ package de.splatgames.software.external.afbb.parver;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling
 public class ParverApplication {
 
     public static void main(String[] args) {

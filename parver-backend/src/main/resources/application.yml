@@ -1,6 +1,14 @@
 spring:
   application:
     name: parver
+  jpa:
+    open-in-view: false
 
 server:
   port: 8080
+
+parver:
+  security:
+    jwt:
+      access-token-expiration: 900
+      refresh-token-expiration: 604800

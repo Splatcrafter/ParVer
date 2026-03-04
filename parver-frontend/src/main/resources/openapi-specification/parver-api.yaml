@@ -5,9 +5,22 @@ info:
   version: 0.1.0
   contact:
     name: Splatgames Software
+
 servers:
   - url: /api
     description: Default server (relative path)
+
+tags:
+  - name: system
+    description: System health and status
+  - name: auth
+    description: Authentication and token management
+  - name: setup
+    description: Initial system setup (first-run)
+  - name: parking
+    description: Parking space management
+  - name: users
+    description: User management (admin only)
 
 paths:
   /health:
@@ -24,12 +37,166 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 
+  /auth/login:
+    post:
+      operationId: login
+      summary: Authenticate user and receive JWT tokens
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Refresh an expired access token
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      summary: Get the currently authenticated user's profile
+      tags:
+        - auth
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /setup/status:
+    get:
+      operationId: getSetupStatus
+      summary: Check if initial setup is required
+      tags:
+        - setup
+      responses:
+        '200':
+          description: Setup status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetupStatusResponse'
+
+  /setup/verify-otp:
+    post:
+      operationId: verifySetupOtp
+      summary: Verify the one-time password for setup authorization
+      tags:
+        - setup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerificationRequest'
+      responses:
+        '200':
+          description: OTP valid, returns setup token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpVerificationResponse'
+        '401':
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Setup already completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /setup/create-admin:
+    post:
+      operationId: createInitialAdmin
+      summary: Create the initial admin user (requires valid setup token)
+      tags:
+        - setup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAdminRequest'
+      responses:
+        '201':
+          description: Admin created, setup complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Invalid setup token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Setup already completed (admin already exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /parking-spaces:
     get:
       operationId: getParkingSpaces
-      summary: Get all parking spaces
+      summary: Get all parking spaces with current status
       tags:
         - parking
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: List of parking spaces
@@ -40,7 +207,307 @@ paths:
                 items:
                   $ref: '#/components/schemas/ParkingSpace'
 
+  /parking-spaces/{spotNumber}/releases:
+    post:
+      operationId: createRelease
+      summary: Release a parking spot for a time period (owner only)
+      tags:
+        - parking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: spotNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReleaseRequest'
+      responses:
+        '201':
+          description: Release created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingSpotRelease'
+        '400':
+          description: Validation error (e.g. overlapping release)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not the owner of this spot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /parking-spaces/{spotNumber}/releases/{releaseId}:
+    delete:
+      operationId: deleteRelease
+      summary: Cancel a release (owner only, cascades bookings)
+      tags:
+        - parking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: spotNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: releaseId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Release deleted
+        '403':
+          description: Not the owner of this spot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Release not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /parking-spaces/{spotNumber}/bookings:
+    post:
+      operationId: createBooking
+      summary: Book a released parking spot (non-owners only)
+      tags:
+        - parking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: spotNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingSpotBooking'
+        '400':
+          description: Validation error (e.g. overbooking, outside release window)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: User has own parking spot (cannot book)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /parking-spaces/{spotNumber}/bookings/{bookingId}:
+    delete:
+      operationId: deleteBooking
+      summary: Cancel a booking (booker or admin)
+      tags:
+        - parking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: spotNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Booking cancelled
+        '403':
+          description: Not authorized to cancel this booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users:
+    get:
+      operationId: getUsers
+      summary: List all users (admin only)
+      tags:
+        - users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of all users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: createUser
+      summary: Create a new user (admin only)
+      tags:
+        - users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Username already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{userId}:
+    get:
+      operationId: getUserById
+      summary: Get a user by ID (admin only)
+      tags:
+        - users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      operationId: updateUser
+      summary: Update a user (admin only)
+      tags:
+        - users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: deleteUser
+      summary: Delete a user (admin only)
+      tags:
+        - users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: User deleted
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token
+
   schemas:
     HealthResponse:
       type: object
@@ -55,19 +522,309 @@ components:
         - status
         - timestamp
 
-    ParkingSpace:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - error
+        - message
+        - timestamp
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        password:
+          type: string
+          minLength: 8
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          format: int64
+          description: Access token TTL in seconds
+        user:
+          $ref: '#/components/schemas/UserResponse'
+      required:
+        - accessToken
+        - refreshToken
+        - expiresIn
+        - user
+
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+      required:
+        - refreshToken
+
+    UserResponse:
       type: object
       properties:
         id:
           type: integer
           format: int64
-        label:
+        username:
           type: string
-          example: "A-01"
-        occupied:
-          type: boolean
-          example: false
+        displayName:
+          type: string
+        role:
+          type: string
+          enum:
+            - ADMIN
+            - USER
+        parkingSpotNumber:
+          type: integer
+          description: Spot number assigned to this user (null if none)
+          nullable: true
       required:
         - id
-        - label
-        - occupied
+        - username
+        - displayName
+        - role
+
+    CreateUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum:
+            - ADMIN
+            - USER
+        parkingSpotNumber:
+          type: integer
+          description: Parking spot number to assign (null to not assign)
+          nullable: true
+      required:
+        - username
+        - displayName
+        - password
+        - role
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 8
+          description: Only set if changing password
+        role:
+          type: string
+          enum:
+            - ADMIN
+            - USER
+        parkingSpotNumber:
+          type: integer
+          description: Parking spot number to assign (null to unassign)
+          nullable: true
+      required:
+        - displayName
+        - role
+
+    SetupStatusResponse:
+      type: object
+      properties:
+        setupRequired:
+          type: boolean
+        currentStep:
+          type: string
+          enum:
+            - OTP_VERIFICATION
+            - CREATE_ADMIN
+            - COMPLETED
+      required:
+        - setupRequired
+        - currentStep
+
+    OtpVerificationRequest:
+      type: object
+      properties:
+        otp:
+          type: string
+      required:
+        - otp
+
+    OtpVerificationResponse:
+      type: object
+      properties:
+        setupToken:
+          type: string
+          description: Short-lived token authorizing the setup create-admin step
+      required:
+        - setupToken
+
+    CreateAdminRequest:
+      type: object
+      properties:
+        setupToken:
+          type: string
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 8
+      required:
+        - setupToken
+        - username
+        - displayName
+        - password
+
+    ParkingSpace:
+      type: object
+      properties:
+        spotNumber:
+          type: integer
+          description: Physical spot number (unique identifier)
+          example: 53
+        status:
+          type: string
+          description: Current computed status of the parking spot
+          enum:
+            - INACTIVE
+            - OCCUPIED
+            - AVAILABLE
+            - BOOKED
+        ownerDisplayName:
+          type: string
+          description: Display name of the owner (null if INACTIVE)
+          nullable: true
+          example: "Max Mustermann"
+        ownerId:
+          type: integer
+          format: int64
+          description: ID of the owner (null if INACTIVE)
+          nullable: true
+        currentBookerDisplayName:
+          type: string
+          description: Display name of the current booker (only when status is BOOKED)
+          nullable: true
+        activeReleases:
+          type: array
+          description: Current and future releases for this spot
+          items:
+            $ref: '#/components/schemas/ParkingSpotRelease'
+      required:
+        - spotNumber
+        - status
+
+    ParkingSpotRelease:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        spotNumber:
+          type: integer
+        availableFrom:
+          type: string
+          format: date-time
+        availableTo:
+          type: string
+          format: date-time
+        bookings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParkingSpotBooking'
+      required:
+        - id
+        - spotNumber
+        - availableFrom
+        - availableTo
+
+    ParkingSpotBooking:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        spotNumber:
+          type: integer
+        bookedByDisplayName:
+          type: string
+        bookedById:
+          type: integer
+          format: int64
+        bookedFrom:
+          type: string
+          format: date-time
+        bookedTo:
+          type: string
+          format: date-time
+      required:
+        - id
+        - spotNumber
+        - bookedByDisplayName
+        - bookedById
+        - bookedFrom
+        - bookedTo
+
+    CreateReleaseRequest:
+      type: object
+      properties:
+        availableFrom:
+          type: string
+          format: date-time
+        availableTo:
+          type: string
+          format: date-time
+      required:
+        - availableFrom
+        - availableTo
+
+    CreateBookingRequest:
+      type: object
+      properties:
+        releaseId:
+          type: integer
+          format: int64
+        bookedFrom:
+          type: string
+          format: date-time
+        bookedTo:
+          type: string
+          format: date-time
+      required:
+        - releaseId
+        - bookedFrom
+        - bookedTo

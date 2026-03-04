@@ -1,0 +1,220 @@
+package de.splatgames.software.external.afbb.parver.parking;
+
+import de.splatgames.software.external.afbb.parver.user.UserEntity;
+import de.splatgames.software.external.afbb.parver.user.UserRepository;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+
+@Service
+@Transactional
+public class ParkingSpotServiceImpl implements ParkingSpotService {
+
+    private final ParkingSpotRepository parkingSpotRepository;
+    private final ParkingSpotReleaseRepository releaseRepository;
+    private final ParkingSpotBookingRepository bookingRepository;
+    private final UserRepository userRepository;
+
+    public ParkingSpotServiceImpl(
+            @NotNull final ParkingSpotRepository parkingSpotRepository,
+            @NotNull final ParkingSpotReleaseRepository releaseRepository,
+            @NotNull final ParkingSpotBookingRepository bookingRepository,
+            @NotNull final UserRepository userRepository) {
+        this.parkingSpotRepository = parkingSpotRepository;
+        this.releaseRepository = releaseRepository;
+        this.bookingRepository = bookingRepository;
+        this.userRepository = userRepository;
+    }
+
+    @Override
+    @NotNull
+    @Transactional(readOnly = true)
+    public List<ParkingSpotEntity> findAll() {
+        return this.parkingSpotRepository.findAll();
+    }
+
+    @Override
+    @NotNull
+    @Transactional(readOnly = true)
+    public Optional<ParkingSpotEntity> findBySpotNumber(final int spotNumber) {
+        return this.parkingSpotRepository.findById(spotNumber);
+    }
+
+    @Override
+    @NotNull
+    @Transactional(readOnly = true)
+    public Optional<ParkingSpotEntity> findByOwnerId(final long ownerId) {
+        return this.parkingSpotRepository.findByOwnerId(ownerId);
+    }
+
+    @Override
+    @NotNull
+    public ParkingSpotEntity createSpot(final int spotNumber) {
+        if (this.parkingSpotRepository.existsById(spotNumber)) {
+            throw new IllegalArgumentException("Parking spot already exists: " + spotNumber);
+        }
+        return this.parkingSpotRepository.save(new ParkingSpotEntity(spotNumber));
+    }
+
+    @Override
+    public void assignOwner(final int spotNumber, final long userId) {
+        final ParkingSpotEntity spot = this.parkingSpotRepository.findById(spotNumber)
+                .orElseThrow(() -> new NoSuchElementException("Parking spot not found: " + spotNumber));
+
+        final UserEntity user = this.userRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("User not found: " + userId));
+
+        this.parkingSpotRepository.findByOwnerId(userId)
+                .ifPresent(existingSpot -> existingSpot.setOwner(null));
+
+        spot.setOwner(user);
+        this.parkingSpotRepository.save(spot);
+    }
+
+    @Override
+    public void removeOwner(final int spotNumber) {
+        final ParkingSpotEntity spot = this.parkingSpotRepository.findById(spotNumber)
+                .orElseThrow(() -> new NoSuchElementException("Parking spot not found: " + spotNumber));
+        spot.setOwner(null);
+        this.parkingSpotRepository.save(spot);
+    }
+
+    // --- Release management ---
+
+    @Override
+    @NotNull
+    public ParkingSpotReleaseEntity createRelease(final int spotNumber, final long userId,
+                                                   @NotNull final LocalDateTime from,
+                                                   @NotNull final LocalDateTime to) {
+        if (!from.isBefore(to)) {
+            throw new IllegalArgumentException("availableFrom must be before availableTo");
+        }
+
+        final ParkingSpotEntity spot = this.parkingSpotRepository.findById(spotNumber)
+                .orElseThrow(() -> new NoSuchElementException("Parking spot not found: " + spotNumber));
+
+        if (spot.getOwner() == null || !spot.getOwner().getId().equals(userId)) {
+            throw new SecurityException("Only the owner can release this spot");
+        }
+
+        final List<ParkingSpotReleaseEntity> overlapping =
+                this.releaseRepository.findOverlapping(spotNumber, from, to);
+        if (!overlapping.isEmpty()) {
+            throw new IllegalArgumentException("Release overlaps with an existing release");
+        }
+
+        final var release = new ParkingSpotReleaseEntity(spot, from, to);
+        return this.releaseRepository.save(release);
+    }
+
+    @Override
+    public void deleteRelease(final long releaseId, final long userId) {
+        final ParkingSpotReleaseEntity release = this.releaseRepository.findById(releaseId)
+                .orElseThrow(() -> new NoSuchElementException("Release not found: " + releaseId));
+
+        if (!release.getParkingSpot().getOwner().getId().equals(userId)) {
+            throw new SecurityException("Only the owner can delete this release");
+        }
+
+        // Cascade deletes bookings via orphanRemoval
+        this.releaseRepository.delete(release);
+    }
+
+    @Override
+    @NotNull
+    @Transactional(readOnly = true)
+    public List<ParkingSpotReleaseEntity> getActiveReleases(final int spotNumber) {
+        return this.releaseRepository.findByParkingSpotSpotNumberAndAvailableToAfter(
+                spotNumber, LocalDateTime.now(ParkingSpotMapper.APP_ZONE));
+    }
+
+    // --- Booking management ---
+
+    @Override
+    @NotNull
+    public ParkingSpotBookingEntity createBooking(final int spotNumber, final long releaseId,
+                                                   final long userId,
+                                                   @NotNull final LocalDateTime from,
+                                                   @NotNull final LocalDateTime to) {
+        if (!from.isBefore(to)) {
+            throw new IllegalArgumentException("bookedFrom must be before bookedTo");
+        }
+
+        final UserEntity user = this.userRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("User not found: " + userId));
+
+        if (user.hasParkingSpot()) {
+            throw new SecurityException("Users with their own parking spot cannot book");
+        }
+
+        final ParkingSpotReleaseEntity release = this.releaseRepository.findById(releaseId)
+                .orElseThrow(() -> new NoSuchElementException("Release not found: " + releaseId));
+
+        if (release.getParkingSpot().getSpotNumber() != spotNumber) {
+            throw new IllegalArgumentException("Release does not belong to spot " + spotNumber);
+        }
+
+        // Booking must be within release window
+        if (from.isBefore(release.getAvailableFrom()) || to.isAfter(release.getAvailableTo())) {
+            throw new IllegalArgumentException("Booking must be within the release window");
+        }
+
+        // No overlapping bookings
+        final List<ParkingSpotBookingEntity> overlapping =
+                this.bookingRepository.findOverlapping(releaseId, from, to);
+        if (!overlapping.isEmpty()) {
+            throw new IllegalArgumentException("Booking overlaps with an existing booking");
+        }
+
+        final var booking = new ParkingSpotBookingEntity(release, user, from, to);
+        return this.bookingRepository.save(booking);
+    }
+
+    @Override
+    public void deleteBooking(final long bookingId, final long userId, final boolean isAdmin) {
+        final ParkingSpotBookingEntity booking = this.bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new NoSuchElementException("Booking not found: " + bookingId));
+
+        if (!isAdmin && !booking.getBookedBy().getId().equals(userId)) {
+            throw new SecurityException("Only the booker or an admin can cancel this booking");
+        }
+
+        this.bookingRepository.delete(booking);
+    }
+
+    // --- Status computation ---
+
+    @Override
+    @NotNull
+    @Transactional(readOnly = true)
+    public ParkingSpotStatus computeStatus(@NotNull final ParkingSpotEntity spot,
+                                            @NotNull final LocalDateTime now) {
+        if (spot.getOwner() == null) {
+            return ParkingSpotStatus.INACTIVE;
+        }
+
+        final List<ParkingSpotReleaseEntity> releases =
+                this.releaseRepository.findByParkingSpotSpotNumber(spot.getSpotNumber());
+
+        // Find a release that covers 'now'
+        final ParkingSpotReleaseEntity activeRelease = releases.stream()
+                .filter(r -> r.containsTime(now))
+                .findFirst()
+                .orElse(null);
+
+        if (activeRelease == null) {
+            return ParkingSpotStatus.OCCUPIED;
+        }
+
+        // Check if there's a booking within this release that covers 'now'
+        final boolean isBooked = activeRelease.getBookings().stream()
+                .anyMatch(b -> b.containsTime(now));
+
+        return isBooked ? ParkingSpotStatus.BOOKED : ParkingSpotStatus.AVAILABLE;
+    }
+}

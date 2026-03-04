@@ -1,22 +1,55 @@
 import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
+import { LogOut, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SmallParkingLot } from "@/components/parking/small-parking-lot"
+import { SpotDetailSheet } from "@/components/parking/spot-detail-sheet"
+import { useAuth } from "@/hooks/use-auth"
 import { cn } from "@/lib/utils"
+import type { components } from "@/lib/api-types"
 
 type ParkingArea = "small" | "large"
+type ParkingSpace = components["schemas"]["ParkingSpace"]
 
 export default function ParkingPage() {
   const [activeArea, setActiveArea] = useState<ParkingArea>("small")
+  const [selectedSpot, setSelectedSpot] = useState<ParkingSpace | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const { user, isAdmin, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate("/login", { replace: true })
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center px-4 py-6">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight">ParVer</h1>
-        <p className="text-sm text-muted-foreground">
-          Parkplatzverwaltung &ndash; AFBB
-        </p>
+      <div className="grid w-full max-w-2xl grid-cols-[1fr_auto_1fr] items-center">
+        <div />
+        <div className="text-center">
+          <h1 className="text-2xl font-bold tracking-tight">ParVer</h1>
+          <p className="text-sm text-muted-foreground">
+            Parkplatzverwaltung &ndash; AFBB
+          </p>
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            {user?.displayName}
+          </span>
+          {isAdmin && (
+            <Button variant="ghost" size="icon-sm" asChild title="Verwaltung">
+              <Link to="/administration/users">
+                <Settings className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
+          <Button variant="ghost" size="icon-sm" onClick={handleLogout} title="Abmelden">
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Toggle Buttons */}
@@ -57,7 +90,7 @@ export default function ParkingPage() {
               transition={{ duration: 0.25 }}
               className="w-full"
             >
-              <SmallParkingLot />
+              <SmallParkingLot onSpotClick={setSelectedSpot} refreshKey={refreshKey} />
             </motion.div>
           ) : (
             <motion.div
@@ -78,6 +111,15 @@ export default function ParkingPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Spot Detail Sheet */}
+      <SpotDetailSheet
+        spot={selectedSpot}
+        onClose={() => {
+          setSelectedSpot(null)
+          setRefreshKey((k) => k + 1)
+        }}
+      />
 
       {/* Footer */}
       <div className="mt-auto flex flex-col items-center gap-1 pt-6">

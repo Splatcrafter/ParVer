@@ -1,4 +1,9 @@
-import { ParkingSpot } from "@/components/parking/parking-spot"
+import { useCallback, useEffect, useState } from "react"
+import { ParkingSpot, type SpotStatus } from "@/components/parking/parking-spot"
+import { parkingApi } from "@/lib/api"
+import type { components } from "@/lib/api-types"
+
+type ParkingSpace = components["schemas"]["ParkingSpace"]
 
 // Parking spot dimensions
 const SPOT_W = 90
@@ -37,7 +42,44 @@ const rightSpots = [60, 61].map((num, i) => ({
 // Green area: from top to a few px above spot 60
 const GREEN_H = rightStartY - CONTENT_Y - 6
 
-export function SmallParkingLot() {
+interface SmallParkingLotProps {
+  onSpotClick?: (spot: ParkingSpace) => void
+  refreshKey?: number
+}
+
+export function SmallParkingLot({ onSpotClick, refreshKey }: SmallParkingLotProps) {
+  const [spaces, setSpaces] = useState<ParkingSpace[]>([])
+
+  const fetchSpaces = useCallback(async () => {
+    try {
+      const response = await parkingApi.getParkingSpaces()
+      if (response.ok) {
+        setSpaces(await response.json())
+      }
+    } catch {
+      // silently ignore - spots will show as INACTIVE
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchSpaces()
+  }, [fetchSpaces, refreshKey])
+
+  const getStatus = (spotNumber: number): SpotStatus => {
+    const space = spaces.find((s) => s.spotNumber === spotNumber)
+    return (space?.status as SpotStatus) ?? "INACTIVE"
+  }
+
+  const getSpace = (spotNumber: number): ParkingSpace | undefined => {
+    return spaces.find((s) => s.spotNumber === spotNumber)
+  }
+
+  const handleSpotClick = (spotNumber: number) => {
+    if (!onSpotClick) return
+    const space = getSpace(spotNumber)
+    if (space) onSpotClick(space)
+  }
+
   return (
     <svg
       viewBox={`0 0 ${SVG_W} ${SVG_H}`}
@@ -113,7 +155,7 @@ export function SmallParkingLot() {
         Gr&uuml;nfl&auml;che
       </text>
 
-      {/* Left parking spots (59-53, angled) */}
+      {/* Left parking spots (53-59, angled) */}
       {leftSpots.map((spot, i) => (
         <ParkingSpot
           key={spot.number}
@@ -124,6 +166,8 @@ export function SmallParkingLot() {
           height={SPOT_H}
           rotation={ANGLE}
           delay={0.05 * i}
+          status={getStatus(spot.number)}
+          onClick={() => handleSpotClick(spot.number)}
         />
       ))}
 
@@ -138,6 +182,8 @@ export function SmallParkingLot() {
           height={SPOT_H}
           rotation={-ANGLE}
           delay={0.05 * (leftSpots.length + i)}
+          status={getStatus(spot.number)}
+          onClick={() => handleSpotClick(spot.number)}
         />
       ))}
     </svg>

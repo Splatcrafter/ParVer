@@ -71,7 +71,8 @@ export const apiClient = new ApiClient()
 
 // Typed API helpers
 export const parkingApi = {
-  getParkingSpaces: () => apiClient.fetch("/parking-spaces"),
+  getParkingSpaces: (area?: "small" | "large") =>
+    apiClient.fetch(area ? `/parking-spaces?area=${area}` : "/parking-spaces"),
 
   createRelease: (spotNumber: number, availableFrom: string, availableTo: string) =>
     apiClient.fetch(`/parking-spaces/${spotNumber}/releases`, {

@@ -22,6 +22,9 @@ public class ParkingSpotEntity {
     @Column(name = "spot_number", nullable = false)
     private Integer spotNumber;
 
+    @Column(name = "area", nullable = false)
+    private String area;
+
     @OneToOne
     @JoinColumn(name = "owner_id", unique = true)
     private UserEntity owner;
@@ -36,8 +39,9 @@ public class ParkingSpotEntity {
         // JPA
     }
 
-    public ParkingSpotEntity(@NotNull final Integer spotNumber) {
+    public ParkingSpotEntity(@NotNull final Integer spotNumber, @NotNull final String area) {
         this.spotNumber = spotNumber;
+        this.area = area;
     }
 
     @PrePersist
@@ -54,6 +58,11 @@ public class ParkingSpotEntity {
     @NotNull
     public Integer getSpotNumber() {
         return this.spotNumber;
+    }
+
+    @NotNull
+    public String getArea() {
+        return this.area;
     }
 
     @Nullable

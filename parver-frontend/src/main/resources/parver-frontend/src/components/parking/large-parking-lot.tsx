@@ -7,7 +7,6 @@ type ParkingSpace = components["schemas"]["ParkingSpace"]
 
 // Parking spot dimensions
 const SPOT_W = 90
-const SPOT_H = 36
 const SPOT_GAP = 4
 const ANGLE = 25
 
@@ -92,7 +91,7 @@ export function LargeParkingLot({ onSpotClick, refreshKey, spaces: externalSpace
 
   const fetchSpaces = useCallback(async () => {
     try {
-      const response = await parkingApi.getParkingSpaces()
+      const response = await parkingApi.getParkingSpaces("large")
       if (response.ok) {
         setInternalSpaces(await response.json())
       }

@@ -199,6 +199,16 @@ paths:
         - parking
       security:
         - bearerAuth: []
+      parameters:
+        - name: area
+          in: query
+          required: false
+          description: Filter by parking area (small or large)
+          schema:
+            type: string
+            enum:
+              - small
+              - large
       responses:
         '200':
           description: List of parking spaces
@@ -812,6 +822,12 @@ components:
           type: integer
           description: Physical spot number (unique identifier)
           example: 53
+        area:
+          type: string
+          description: Parking area this spot belongs to
+          enum:
+            - small
+            - large
         status:
           type: string
           description: Current computed status of the parking spot

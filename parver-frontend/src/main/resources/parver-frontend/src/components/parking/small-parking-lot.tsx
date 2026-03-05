@@ -53,7 +53,7 @@ export function SmallParkingLot({ onSpotClick, refreshKey, spaces: externalSpace
 
   const fetchSpaces = useCallback(async () => {
     try {
-      const response = await parkingApi.getParkingSpaces()
+      const response = await parkingApi.getParkingSpaces("small")
       if (response.ok) {
         setInternalSpaces(await response.json())
       }

@@ -26,6 +26,7 @@ public final class ParkingSpotMapper {
                                            @NotNull final LocalDateTime now) {
         final ParkingSpace response = new ParkingSpace()
                 .spotNumber(entity.getSpotNumber())
+                .area(ParkingSpace.AreaEnum.fromValue(entity.getArea()))
                 .status(ParkingSpace.StatusEnum.valueOf(status.name()));
 
         if (entity.getOwner() != null) {

@@ -69,11 +69,11 @@ public class ParkingSpotServiceImpl implements ParkingSpotService {
 
     @Override
     @NotNull
-    public ParkingSpotEntity createSpot(final int spotNumber) {
+    public ParkingSpotEntity createSpot(final int spotNumber, @NotNull final String area) {
         if (this.parkingSpotRepository.existsById(spotNumber)) {
             throw new IllegalArgumentException("Parking spot already exists: " + spotNumber);
         }
-        return this.parkingSpotRepository.save(new ParkingSpotEntity(spotNumber));
+        return this.parkingSpotRepository.save(new ParkingSpotEntity(spotNumber, area));
     }
 
     @Override
@@ -298,8 +298,18 @@ public class ParkingSpotServiceImpl implements ParkingSpotService {
     @NotNull
     @Transactional(readOnly = true)
     public List<ParkingSpace> buildParkingSpacesResponse() {
+        return buildParkingSpacesResponse(null);
+    }
+
+    @Override
+    @NotNull
+    @Transactional(readOnly = true)
+    public List<ParkingSpace> buildParkingSpacesResponse(@Nullable final String area) {
         final LocalDateTime now = LocalDateTime.now(ParkingSpotMapper.APP_ZONE);
-        return this.parkingSpotRepository.findAll().stream()
+        final List<ParkingSpotEntity> spots = area != null
+                ? this.parkingSpotRepository.findByArea(area)
+                : this.parkingSpotRepository.findAll();
+        return spots.stream()
                 .map(spot -> {
                     final ParkingSpotStatus status = computeStatus(spot, now);
                     final List<ParkingSpotReleaseEntity> releases =

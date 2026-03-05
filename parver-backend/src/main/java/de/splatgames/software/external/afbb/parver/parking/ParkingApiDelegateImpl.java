@@ -36,8 +36,8 @@ public class ParkingApiDelegateImpl implements ParkingApiDelegate {
     }
 
     @Override
-    public ResponseEntity<List<ParkingSpace>> getParkingSpaces() {
-        return ResponseEntity.ok(this.parkingSpotService.buildParkingSpacesResponse());
+    public ResponseEntity<List<ParkingSpace>> getParkingSpaces(final String area) {
+        return ResponseEntity.ok(this.parkingSpotService.buildParkingSpacesResponse(area));
     }
 
     @Override

@@ -14,6 +14,9 @@ public interface ParkingSpotService {
     List<ParkingSpace> buildParkingSpacesResponse();
 
     @NotNull
+    List<ParkingSpace> buildParkingSpacesResponse(@Nullable String area);
+
+    @NotNull
     List<ParkingSpotEntity> findAll();
 
     @NotNull
@@ -23,7 +26,7 @@ public interface ParkingSpotService {
     Optional<ParkingSpotEntity> findByOwnerId(long ownerId);
 
     @NotNull
-    ParkingSpotEntity createSpot(int spotNumber);
+    ParkingSpotEntity createSpot(int spotNumber, @NotNull String area);
 
     void assignOwner(int spotNumber, long userId);
 

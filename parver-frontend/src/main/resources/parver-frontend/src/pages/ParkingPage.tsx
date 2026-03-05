@@ -29,6 +29,9 @@ export default function ParkingPage() {
 
   useSSE(handleSSEUpdate)
 
+  const smallSpaces = liveSpaces?.filter((s) => s.spotNumber != null && s.spotNumber >= 53)
+  const largeSpaces = liveSpaces?.filter((s) => s.spotNumber != null && s.spotNumber <= 30)
+
   const userHasNoSpot = user?.parkingSpotNumber == null
 
   const handleLogout = () => {
@@ -102,7 +105,7 @@ export default function ParkingPage() {
               transition={{ duration: 0.25 }}
               className="w-full"
             >
-              <SmallParkingLot onSpotClick={setSelectedSpot} refreshKey={refreshKey} spaces={liveSpaces} />
+              <SmallParkingLot onSpotClick={setSelectedSpot} refreshKey={refreshKey} spaces={smallSpaces} />
             </motion.div>
           ) : (
             <motion.div
@@ -113,7 +116,7 @@ export default function ParkingPage() {
               transition={{ duration: 0.25 }}
               className="w-full"
             >
-              <LargeParkingLot onSpotClick={setSelectedSpot} refreshKey={refreshKey} spaces={liveSpaces} />
+              <LargeParkingLot onSpotClick={setSelectedSpot} refreshKey={refreshKey} spaces={largeSpaces} />
             </motion.div>
           )}
         </AnimatePresence>

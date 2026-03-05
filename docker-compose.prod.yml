@@ -12,7 +12,7 @@ services:
     restart: unless-stopped
 
   parver:
-    image: ghcr.io/splatgames/parver:latest
+    image: ghcr.io/splatcrafter/parver:latest
     container_name: parver-app
     ports:
       - "8080:8080"

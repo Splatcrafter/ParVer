@@ -10,7 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 
 import java.time.LocalDateTime;
 
@@ -21,6 +23,8 @@ public class DevDataSeeder {
     private static final Logger LOG = LoggerFactory.getLogger(DevDataSeeder.class);
 
     @Bean
+    @Order(2)
+    @DependsOn("seedParkingSpots")
     public CommandLineRunner seedDevData(
             @NotNull final UserService userService,
             @NotNull final ParkingSpotService parkingSpotService) {
@@ -34,16 +38,6 @@ public class DevDataSeeder {
                     "lehrer2", "Erika Musterfrau", "password2!", UserRole.USER);
             final UserEntity suchender = userService.createUser(
                     "suchender", "Hans Suchend", "password3!", UserRole.USER);
-
-            // Create parking spots for small area (53-61)
-            for (int i = 53; i <= 61; i++) {
-                parkingSpotService.createSpot(i, "small");
-            }
-
-            // Create parking spots for large area (1-30)
-            for (int i = 1; i <= 30; i++) {
-                parkingSpotService.createSpot(i, "large");
-            }
 
             // Assign some spots to users
             parkingSpotService.assignOwner(53, lehrer1.getId());
@@ -63,8 +57,7 @@ public class DevDataSeeder {
                         tomorrowStart, tomorrowEnd);
             }
 
-            LOG.info("Dev data seeded: 4 users, 9 small spots (53-61), 30 large spots (1-30), " +
-                    "2 assigned, 1 release, 1 booking");
+            LOG.info("Dev data seeded: 4 users, 2 assigned, 1 release, 1 booking");
         };
     }
 }

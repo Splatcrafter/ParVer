@@ -28,11 +28,8 @@
 - [Getting Started](#getting-started)
 - [Configuration](#configuration)
 - [API Reference](#api-reference)
-- [Project Structure](#project-structure)
 - [Development](#development)
 - [Deployment](#deployment)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
 - [License & Acknowledgments](#license--acknowledgments)
 
 ---

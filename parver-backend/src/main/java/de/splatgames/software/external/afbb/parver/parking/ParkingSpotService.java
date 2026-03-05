@@ -1,5 +1,6 @@
 package de.splatgames.software.external.afbb.parver.parking;
 
+import de.splatgames.software.external.afbb.parver.model.ParkingSpace;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -8,6 +9,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ParkingSpotService {
+
+    @NotNull
+    List<ParkingSpace> buildParkingSpacesResponse();
 
     @NotNull
     List<ParkingSpotEntity> findAll();

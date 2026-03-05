@@ -5,6 +5,13 @@ import { ArrowLeft, Check, LogOut, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import {
   Table,
   TableBody,
   TableCell,
@@ -45,6 +52,7 @@ export default function ReportsPage() {
   const navigate = useNavigate()
   const [reports, setReports] = useState<ParkingSpotReport[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedReport, setSelectedReport] = useState<ParkingSpotReport | null>(null)
 
   const fetchReports = useCallback(async () => {
     try {
@@ -130,7 +138,11 @@ export default function ReportsPage() {
               </TableHeader>
               <TableBody>
                 {reports.map((r) => (
-                  <TableRow key={r.id}>
+                  <TableRow
+                    key={r.id}
+                    className="cursor-pointer"
+                    onClick={() => setSelectedReport(r)}
+                  >
                     <TableCell className="font-medium">{r.spotNumber}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {r.reporterDisplayName}
@@ -152,7 +164,7 @@ export default function ReportsPage() {
                           <Button
                             variant="ghost"
                             size="icon-xs"
-                            onClick={() => handleUpdateStatus(r.id, "RESOLVED")}
+                            onClick={(e) => { e.stopPropagation(); handleUpdateStatus(r.id, "RESOLVED") }}
                             title="Als gelöst markieren"
                           >
                             <Check className="h-3 w-3 text-green-600" />
@@ -160,7 +172,7 @@ export default function ReportsPage() {
                           <Button
                             variant="ghost"
                             size="icon-xs"
-                            onClick={() => handleUpdateStatus(r.id, "DISMISSED")}
+                            onClick={(e) => { e.stopPropagation(); handleUpdateStatus(r.id, "DISMISSED") }}
                             title="Ablehnen"
                           >
                             <X className="h-3 w-3 text-destructive" />
@@ -175,6 +187,64 @@ export default function ReportsPage() {
           </div>
         )}
       </motion.div>
+
+      {/* Report Detail Dialog */}
+      <Dialog
+        open={selectedReport !== null}
+        onOpenChange={(open) => { if (!open) setSelectedReport(null) }}
+      >
+        <DialogContent className="max-w-md">
+          {selectedReport && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  Meldung &ndash; Parkplatz {selectedReport.spotNumber}
+                  <Badge variant={STATUS_VARIANTS[selectedReport.status]}>
+                    {STATUS_LABELS[selectedReport.status]}
+                  </Badge>
+                </DialogTitle>
+                <DialogDescription>
+                  Gemeldet von {selectedReport.reporterDisplayName} am{" "}
+                  {formatDateTime(selectedReport.createdAt)}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium">Kommentar</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                    {selectedReport.comment || "Kein Kommentar angegeben."}
+                  </p>
+                </div>
+                {selectedReport.status === "OPEN" && (
+                  <div className="flex gap-2 border-t pt-3">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        handleUpdateStatus(selectedReport.id, "RESOLVED")
+                        setSelectedReport(null)
+                      }}
+                    >
+                      <Check className="mr-1.5 h-3.5 w-3.5" />
+                      Als gel&ouml;st markieren
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        handleUpdateStatus(selectedReport.id, "DISMISSED")
+                        setSelectedReport(null)
+                      }}
+                    >
+                      <X className="mr-1.5 h-3.5 w-3.5" />
+                      Ablehnen
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <div className="mt-auto flex flex-col items-center gap-1 pt-6">

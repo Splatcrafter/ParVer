@@ -5,6 +5,7 @@ import de.splatgames.software.external.afbb.parver.model.CreateUserRequest;
 import de.splatgames.software.external.afbb.parver.model.ErrorResponse;
 import de.splatgames.software.external.afbb.parver.model.UpdateUserRequest;
 import de.splatgames.software.external.afbb.parver.model.UserResponse;
+import de.splatgames.software.external.afbb.parver.notification.PushNotificationService;
 import de.splatgames.software.external.afbb.parver.parking.ParkingSpotEntity;
 import de.splatgames.software.external.afbb.parver.parking.ParkingSpotService;
 import org.jetbrains.annotations.NotNull;
@@ -21,12 +22,15 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
 
     private final UserService userService;
     private final ParkingSpotService parkingSpotService;
+    private final PushNotificationService pushNotificationService;
 
     public UsersApiDelegateImpl(
             @NotNull final UserService userService,
-            @NotNull final ParkingSpotService parkingSpotService) {
+            @NotNull final ParkingSpotService parkingSpotService,
+            @NotNull final PushNotificationService pushNotificationService) {
         this.userService = userService;
         this.parkingSpotService = parkingSpotService;
+        this.pushNotificationService = pushNotificationService;
     }
 
     @Override
@@ -102,6 +106,9 @@ public class UsersApiDelegateImpl implements UsersApiDelegate {
     @Override
     public ResponseEntity<Void> deleteUser(@NotNull final Long userId) {
         try {
+            // Delete push subscription for this user
+            this.pushNotificationService.unsubscribe(userId);
+
             // Delete all bookings this user made on other spots
             this.parkingSpotService.deleteBookingsByUser(userId);
 

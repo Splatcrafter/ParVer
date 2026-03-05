@@ -45,16 +45,17 @@ const GREEN_H = rightStartY - CONTENT_Y - 6
 interface SmallParkingLotProps {
   onSpotClick?: (spot: ParkingSpace) => void
   refreshKey?: number
+  spaces?: ParkingSpace[]
 }
 
-export function SmallParkingLot({ onSpotClick, refreshKey }: SmallParkingLotProps) {
-  const [spaces, setSpaces] = useState<ParkingSpace[]>([])
+export function SmallParkingLot({ onSpotClick, refreshKey, spaces: externalSpaces }: SmallParkingLotProps) {
+  const [internalSpaces, setInternalSpaces] = useState<ParkingSpace[]>([])
 
   const fetchSpaces = useCallback(async () => {
     try {
       const response = await parkingApi.getParkingSpaces()
       if (response.ok) {
-        setSpaces(await response.json())
+        setInternalSpaces(await response.json())
       }
     } catch {
       // silently ignore - spots will show as INACTIVE
@@ -62,8 +63,12 @@ export function SmallParkingLot({ onSpotClick, refreshKey }: SmallParkingLotProp
   }, [])
 
   useEffect(() => {
-    fetchSpaces()
-  }, [fetchSpaces, refreshKey])
+    if (!externalSpaces) {
+      fetchSpaces()
+    }
+  }, [fetchSpaces, refreshKey, externalSpaces])
+
+  const spaces = externalSpaces ?? internalSpaces
 
   const getStatus = (spotNumber: number): SpotStatus => {
     const space = spaces.find((s) => s.spotNumber === spotNumber)

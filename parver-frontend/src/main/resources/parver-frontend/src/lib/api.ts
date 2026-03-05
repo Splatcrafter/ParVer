@@ -112,6 +112,34 @@ export const reportsApi = {
     }),
 }
 
+export const pushApi = {
+  getVapidKey: () => apiClient.fetch("/push/vapid-key"),
+
+  subscribe: (data: {
+    endpoint: string
+    p256dh: string
+    auth: string
+    seekingParking: boolean
+  }) =>
+    apiClient.fetch("/push/subscribe", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  unsubscribe: () =>
+    apiClient.fetch("/push/subscribe", {
+      method: "DELETE",
+    }),
+
+  updateSeeking: (seekingParking: boolean) =>
+    apiClient.fetch("/push/seeking", {
+      method: "PUT",
+      body: JSON.stringify({ seekingParking }),
+    }),
+
+  getStatus: () => apiClient.fetch("/push/status"),
+}
+
 export const usersApi = {
   getAll: () => apiClient.fetch("/users"),
 

@@ -1,11 +1,13 @@
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import { LogOut, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SmallParkingLot } from "@/components/parking/small-parking-lot"
 import { SpotDetailSheet } from "@/components/parking/spot-detail-sheet"
+import { NotificationSettings } from "@/components/parking/notification-settings"
 import { useAuth } from "@/hooks/use-auth"
+import { useSSE } from "@/hooks/use-sse"
 import { cn } from "@/lib/utils"
 import type { components } from "@/lib/api-types"
 
@@ -16,8 +18,17 @@ export default function ParkingPage() {
   const [activeArea, setActiveArea] = useState<ParkingArea>("small")
   const [selectedSpot, setSelectedSpot] = useState<ParkingSpace | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [liveSpaces, setLiveSpaces] = useState<ParkingSpace[] | undefined>(undefined)
   const { user, isAdmin, logout } = useAuth()
   const navigate = useNavigate()
+
+  const handleSSEUpdate = useCallback((spaces: ParkingSpace[]) => {
+    setLiveSpaces(spaces)
+  }, [])
+
+  useSSE(handleSSEUpdate)
+
+  const userHasNoSpot = user?.parkingSpotNumber == null
 
   const handleLogout = () => {
     logout()
@@ -90,7 +101,7 @@ export default function ParkingPage() {
               transition={{ duration: 0.25 }}
               className="w-full"
             >
-              <SmallParkingLot onSpotClick={setSelectedSpot} refreshKey={refreshKey} />
+              <SmallParkingLot onSpotClick={setSelectedSpot} refreshKey={refreshKey} spaces={liveSpaces} />
             </motion.div>
           ) : (
             <motion.div
@@ -111,6 +122,13 @@ export default function ParkingPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Notification Settings for users without parking spot */}
+      {userHasNoSpot && (
+        <div className="mt-4 w-full max-w-2xl">
+          <NotificationSettings />
+        </div>
+      )}
 
       {/* Spot Detail Sheet */}
       <SpotDetailSheet

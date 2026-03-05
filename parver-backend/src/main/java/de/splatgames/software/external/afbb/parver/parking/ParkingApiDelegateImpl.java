@@ -17,9 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -38,18 +36,8 @@ public class ParkingApiDelegateImpl implements ParkingApiDelegate {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public ResponseEntity<List<ParkingSpace>> getParkingSpaces() {
-        final LocalDateTime now = LocalDateTime.now(ParkingSpotMapper.APP_ZONE);
-        final List<ParkingSpace> spaces = this.parkingSpotService.findAll().stream()
-                .map(spot -> {
-                    final ParkingSpotStatus status = this.parkingSpotService.computeStatus(spot, now);
-                    final List<ParkingSpotReleaseEntity> releases =
-                            this.parkingSpotService.getActiveReleases(spot.getSpotNumber());
-                    return ParkingSpotMapper.toResponse(spot, status, releases, now);
-                })
-                .toList();
-        return ResponseEntity.ok(spaces);
+        return ResponseEntity.ok(this.parkingSpotService.buildParkingSpacesResponse());
     }
 
     @Override

@@ -1,5 +1,7 @@
 package de.splatgames.software.external.afbb.parver.parking;
 
+import de.splatgames.software.external.afbb.parver.model.ParkingSpace;
+import de.splatgames.software.external.afbb.parver.notification.PushNotificationService;
 import de.splatgames.software.external.afbb.parver.user.UserEntity;
 import de.splatgames.software.external.afbb.parver.user.UserRepository;
 import org.jetbrains.annotations.NotNull;
@@ -8,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -16,23 +19,31 @@ import java.util.Optional;
 @Transactional
 public class ParkingSpotServiceImpl implements ParkingSpotService {
 
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+
     private final ParkingSpotRepository parkingSpotRepository;
     private final ParkingSpotReleaseRepository releaseRepository;
     private final ParkingSpotBookingRepository bookingRepository;
     private final ParkingSpotReportRepository reportRepository;
     private final UserRepository userRepository;
+    private final SseEmitterService sseEmitterService;
+    private final PushNotificationService pushNotificationService;
 
     public ParkingSpotServiceImpl(
             @NotNull final ParkingSpotRepository parkingSpotRepository,
             @NotNull final ParkingSpotReleaseRepository releaseRepository,
             @NotNull final ParkingSpotBookingRepository bookingRepository,
             @NotNull final ParkingSpotReportRepository reportRepository,
-            @NotNull final UserRepository userRepository) {
+            @NotNull final UserRepository userRepository,
+            @NotNull final SseEmitterService sseEmitterService,
+            @NotNull final PushNotificationService pushNotificationService) {
         this.parkingSpotRepository = parkingSpotRepository;
         this.releaseRepository = releaseRepository;
         this.bookingRepository = bookingRepository;
         this.reportRepository = reportRepository;
         this.userRepository = userRepository;
+        this.sseEmitterService = sseEmitterService;
+        this.pushNotificationService = pushNotificationService;
     }
 
     @Override
@@ -127,7 +138,17 @@ public class ParkingSpotServiceImpl implements ParkingSpotService {
         }
 
         final var release = new ParkingSpotReleaseEntity(spot, from, to);
-        return this.releaseRepository.save(release);
+        final ParkingSpotReleaseEntity saved = this.releaseRepository.save(release);
+
+        broadcastParkingUpdate();
+
+        // Notify users who are seeking parking
+        final String ownerName = spot.getOwner().getDisplayName();
+        this.pushNotificationService.notifySeekingUsers(
+                "Parkplatz " + spotNumber + " ist jetzt verfügbar!",
+                ownerName + " hat freigegeben: " + from.format(DATE_FMT) + " - " + to.format(DATE_FMT));
+
+        return saved;
     }
 
     @Override
@@ -141,6 +162,7 @@ public class ParkingSpotServiceImpl implements ParkingSpotService {
 
         // Cascade deletes bookings via orphanRemoval
         this.releaseRepository.delete(release);
+        broadcastParkingUpdate();
     }
 
     @Override
@@ -190,7 +212,9 @@ public class ParkingSpotServiceImpl implements ParkingSpotService {
         }
 
         final var booking = new ParkingSpotBookingEntity(release, user, from, to);
-        return this.bookingRepository.save(booking);
+        final ParkingSpotBookingEntity saved = this.bookingRepository.save(booking);
+        broadcastParkingUpdate();
+        return saved;
     }
 
     @Override
@@ -203,6 +227,7 @@ public class ParkingSpotServiceImpl implements ParkingSpotService {
         }
 
         this.bookingRepository.delete(booking);
+        broadcastParkingUpdate();
     }
 
     // --- Status computation ---
@@ -265,5 +290,31 @@ public class ParkingSpotServiceImpl implements ParkingSpotService {
                 .orElseThrow(() -> new NoSuchElementException("Report not found: " + reportId));
         report.setStatus(status);
         this.reportRepository.save(report);
+    }
+
+    // --- Parking spaces response (used by SSE and REST) ---
+
+    @Override
+    @NotNull
+    @Transactional(readOnly = true)
+    public List<ParkingSpace> buildParkingSpacesResponse() {
+        final LocalDateTime now = LocalDateTime.now(ParkingSpotMapper.APP_ZONE);
+        return this.parkingSpotRepository.findAll().stream()
+                .map(spot -> {
+                    final ParkingSpotStatus status = computeStatus(spot, now);
+                    final List<ParkingSpotReleaseEntity> releases =
+                            this.releaseRepository.findByParkingSpotSpotNumberAndAvailableToAfter(
+                                    spot.getSpotNumber(), now);
+                    return ParkingSpotMapper.toResponse(spot, status, releases, now);
+                })
+                .toList();
+    }
+
+    // --- SSE broadcast ---
+
+    private void broadcastParkingUpdate() {
+        // Flush pending changes (deletes, inserts) so the subsequent query sees committed state
+        this.parkingSpotRepository.flush();
+        this.sseEmitterService.broadcast(buildParkingSpacesResponse());
     }
 }

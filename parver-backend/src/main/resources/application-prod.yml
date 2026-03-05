@@ -13,3 +13,8 @@ parver:
   security:
     jwt:
       secret: ${JWT_SECRET}
+  push:
+    vapid:
+      public-key: ${VAPID_PUBLIC_KEY}
+      private-key: ${VAPID_PRIVATE_KEY}
+      subject: ${VAPID_SUBJECT:mailto:admin@parver.example.com}

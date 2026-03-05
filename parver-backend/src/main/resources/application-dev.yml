@@ -17,3 +17,8 @@ parver:
   security:
     jwt:
       secret: dev-secret-key-that-is-at-least-32-bytes-long-for-hmac-sha256
+  push:
+    vapid:
+      public-key: BBzXPhLlPyQtt9wZRAy_DvbDl4blAckOCMjDEfrurK_oH39xqTn31onFaan9GxWWjrgw4ULgcN6NiIu-Uxx6eRc
+      private-key: jF8zZD9gF7wD5eElW-74HUGw-3AKLeMYHKv1wcBaE0Q
+      subject: mailto:dev@parver.local

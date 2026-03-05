@@ -57,23 +57,26 @@ const SVG_W = BARRIER_X + BARRIER_W + PAD
 const BOTTOM_SPOTS_END = BOTTOM_SPOTS_Y + TOP_SPOT_DEPTH
 const SVG_H = Math.max(VERT_Y_BOTTOM, BOTTOM_SPOTS_END) + PAD
 
-// Top spots positioned right to left (spot 1 = rightmost)
-const topSpots = Array.from({ length: TOP_SPOT_COUNT }, (_, i) => ({
-  number: i + 1,
+// Top spots positioned right to left (spot 1 = rightmost, spot 26 = leftmost)
+const TOP_SPOT_NUMBERS = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 26]
+const topSpots = TOP_SPOT_NUMBERS.map((num, i) => ({
+  number: num,
   x: HORIZ_X_RIGHT - LANE_GAP - (i + 1) * TOP_SPOT_ALONG - i * SPOT_GAP,
   y: TOP_SPOTS_Y,
 }))
 
-// Bottom spots positioned right to left (spot 15 = rightmost, right-aligned with top)
-const bottomSpots = Array.from({ length: BOTTOM_SPOT_COUNT }, (_, i) => ({
-  number: TOP_SPOT_COUNT + i + 1,
+// Bottom spots positioned right to left (spot 2 = rightmost, spot 24 = leftmost)
+const BOTTOM_SPOT_NUMBERS = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
+const bottomSpots = BOTTOM_SPOT_NUMBERS.map((num, i) => ({
+  number: num,
   x: HORIZ_X_RIGHT - LANE_GAP - (i + 1) * TOP_SPOT_ALONG - i * SPOT_GAP,
   y: BOTTOM_SPOTS_Y,
 }))
 
-// Left spots positioned top to bottom (spot 27 = topmost, right of vertical road)
-const vertSpots = Array.from({ length: VERT_SPOT_COUNT }, (_, i) => ({
-  number: TOP_SPOT_COUNT + BOTTOM_SPOT_COUNT + i + 1,
+// Vertical road spots, left of vertical road (top to bottom: 30, 29, 28, 27)
+const VERT_SPOT_NUMBERS = [30, 29, 28, 27]
+const vertSpots = VERT_SPOT_NUMBERS.map((num, i) => ({
+  number: num,
   x: VERT_SPOTS_X,
   y: VERT_SPOTS_START_Y + i * (TOP_SPOT_ALONG + SPOT_GAP),
 }))

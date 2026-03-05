@@ -34,11 +34,11 @@ const BOTTOM_SPOTS_Y = HORIZ_Y + LANE_W + LANE_GAP
 // Vertical road spots: left side of vertical road (4 spots, top to bottom)
 const VERT_SPOT_COUNT = 4
 const VERT_SPOTS_X = VERT_X - LANE_GAP - TOP_SPOT_DEPTH
-const VERT_SPOTS_START_Y = HORIZ_Y + LANE_W + LANE_GAP
+const VERT_SPOTS_START_Y = HORIZ_Y
 const VERT_SPOTS_TOTAL_H = VERT_SPOT_COUNT * TOP_SPOT_ALONG + (VERT_SPOT_COUNT - 1) * SPOT_GAP
 
 // Vertical bend (left side, going downward - sized to fit left spots)
-const VERT_LENGTH = VERT_SPOTS_TOTAL_H + 2 * LANE_GAP
+const VERT_LENGTH = (VERT_SPOTS_TOTAL_H + 2 * LANE_GAP) / 2
 const VERT_Y_BOTTOM = HORIZ_Y + LANE_W + VERT_LENGTH
 
 // Horizontal road (spots span full width including above vertical bend)

@@ -69,6 +69,11 @@ export function EditUserDialog({
       return
     }
 
+    if (password && password.length < 8) {
+      setError("Das Passwort muss mindestens 8 Zeichen lang sein.")
+      return
+    }
+
     setSubmitting(true)
     try {
       const data: {

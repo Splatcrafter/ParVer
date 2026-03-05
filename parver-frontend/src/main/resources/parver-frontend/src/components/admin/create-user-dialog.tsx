@@ -58,8 +58,13 @@ export function CreateUserDialog({
     e.preventDefault()
     setError(null)
 
-    if (!username.trim() || !displayName.trim() || !password.trim()) {
+    if (!username.trim() || !displayName.trim() || !password) {
       setError("Bitte alle Pflichtfelder ausfüllen.")
+      return
+    }
+
+    if (password.length < 8) {
+      setError("Das Passwort muss mindestens 8 Zeichen lang sein.")
       return
     }
 

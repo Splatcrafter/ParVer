@@ -11,23 +11,51 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    private static final Map<String, String> FIELD_NAMES = Map.of(
+            "username", "Benutzername",
+            "displayName", "Anzeigename",
+            "password", "Passwort",
+            "role", "Rolle"
+    );
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(final MethodArgumentNotValidException ex) {
         final String detail = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
-                .reduce((a, b) -> a + "; " + b)
-                .orElse("Validierung fehlgeschlagen");
+                .map(fe -> {
+                    final String fieldName = FIELD_NAMES.getOrDefault(fe.getField(), fe.getField());
+                    final String code = fe.getCode();
+                    if ("Size".equals(code) || "Length".equals(code)) {
+                        final Object min = fe.getArguments()[2];
+                        final Object max = fe.getArguments()[1];
+                        if (max instanceof Integer && (Integer) max >= Integer.MAX_VALUE) {
+                            return fieldName + " muss mindestens " + min + " Zeichen lang sein.";
+                        }
+                        return fieldName + " muss zwischen "
+                                + min + " und " + max + " Zeichen lang sein.";
+                    }
+                    if ("MinLength".equals(code) || "Min".equals(code)) {
+                        return fieldName + " muss mindestens "
+                                + fe.getArguments()[1] + " Zeichen lang sein.";
+                    }
+                    if ("NotBlank".equals(code) || "NotNull".equals(code) || "NotEmpty".equals(code)) {
+                        return fieldName + " darf nicht leer sein.";
+                    }
+                    return fieldName + ": " + fe.getDefaultMessage();
+                })
+                .reduce((a, b) -> a + " " + b)
+                .orElse("Validierung fehlgeschlagen.");
         LOG.debug("Validation error: {}", detail);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(
                         "Ungültige Eingabe",
-                        "Bitte füllen Sie alle Pflichtfelder korrekt aus.",
+                        detail,
                         OffsetDateTime.now()));
     }
 

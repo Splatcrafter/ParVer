@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react"
 import { reportsApi } from "@/lib/api"
+import { useAuth } from "@/hooks/use-auth"
 import type { components } from "@/lib/api-types"
 
 type ParkingSpotReport = components["schemas"]["ParkingSpotReport"]
 
 export function useOpenReportCount() {
+  const { isAdmin } = useAuth()
   const [count, setCount] = useState(0)
 
   useEffect(() => {
+    if (!isAdmin) return
+
     let cancelled = false
 
     reportsApi.getAll().then(async (response) => {
@@ -18,7 +22,7 @@ export function useOpenReportCount() {
     }).catch(() => {})
 
     return () => { cancelled = true }
-  }, [])
+  }, [isAdmin])
 
   return count
 }

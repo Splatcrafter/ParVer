@@ -188,8 +188,8 @@ public class ParkingSpotServiceImpl implements ParkingSpotService {
         final UserEntity user = this.userRepository.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("User not found: " + userId));
 
-        if (user.hasParkingSpot()) {
-            throw new SecurityException("Users with their own parking spot cannot book");
+        if (user.hasParkingSpot() && user.getParkingSpot().getSpotNumber() == spotNumber) {
+            throw new SecurityException("Owners cannot book their own parking spot");
         }
 
         final ParkingSpotReleaseEntity release = this.releaseRepository.findById(releaseId)

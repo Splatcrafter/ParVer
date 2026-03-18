@@ -405,19 +405,42 @@ class ParkingSpotServiceImplTest {
         }
 
         @Test
-        @DisplayName("throws SecurityException when user owns a parking spot")
-        void userOwnsParkingSpot() {
-            // seeker now also has a parking spot
+        @DisplayName("throws SecurityException when user tries to book their own parking spot")
+        void userBooksOwnParkingSpot() {
+            // seeker now also has a parking spot (spot 54)
             final ParkingSpotEntity seekerSpot = TestEntityFactory.createSpotWithOwner(54, "small", seeker);
-            // We need to set the parkingSpot field on seeker via the bidirectional relationship
             // hasParkingSpot() checks this.parkingSpot != null
             org.springframework.test.util.ReflectionTestUtils.setField(seeker, "parkingSpot", seekerSpot);
 
             when(userRepository.findById(2L)).thenReturn(Optional.of(seeker));
 
-            assertThatThrownBy(() -> service.createBooking(53, 10L, 2L, NOW, TOMORROW))
+            // Try to book their OWN spot (54) — should be rejected
+            assertThatThrownBy(() -> service.createBooking(54, 10L, 2L, NOW, TOMORROW))
                     .isInstanceOf(SecurityException.class)
                     .hasMessageContaining("own parking spot");
+        }
+
+        @Test
+        @DisplayName("allows parking spot owner to book a different spot")
+        void ownerCanBookOtherSpot() {
+            // seeker now also has a parking spot (spot 54)
+            final ParkingSpotEntity seekerSpot = TestEntityFactory.createSpotWithOwner(54, "small", seeker);
+            org.springframework.test.util.ReflectionTestUtils.setField(seeker, "parkingSpot", seekerSpot);
+
+            when(userRepository.findById(2L)).thenReturn(Optional.of(seeker));
+            when(releaseRepository.findById(10L)).thenReturn(Optional.of(release));
+            when(bookingRepository.findOverlapping(eq(10L), any(), any())).thenReturn(Collections.emptyList());
+            when(bookingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(parkingSpotRepository.findAll()).thenReturn(List.of(spot));
+            when(releaseRepository.findByParkingSpotSpotNumberAndAvailableToAfter(anyInt(), any()))
+                    .thenReturn(Collections.emptyList());
+            when(releaseRepository.findByParkingSpotSpotNumber(anyInt())).thenReturn(Collections.emptyList());
+
+            // Book a DIFFERENT spot (53) — should succeed
+            final ParkingSpotBookingEntity result = service.createBooking(53, 10L, 2L, NOW, TOMORROW);
+
+            assertThat(result).isNotNull();
+            assertThat(result.getBookedBy()).isEqualTo(seeker);
         }
 
         @Test

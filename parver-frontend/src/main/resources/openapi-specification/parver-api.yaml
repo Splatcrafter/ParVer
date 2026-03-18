@@ -298,7 +298,7 @@ paths:
   /parking-spaces/{spotNumber}/bookings:
     post:
       operationId: createBooking
-      summary: Book a released parking spot (non-owners only)
+      summary: Book a released parking spot
       tags:
         - parking
       security:
@@ -329,7 +329,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: User has own parking spot (cannot book)
+          description: User cannot book their own parking spot
           content:
             application/json:
               schema:

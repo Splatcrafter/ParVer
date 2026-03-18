@@ -53,7 +53,7 @@ export function SpotDetailSheet({ spot, onClose }: SpotDetailSheetProps) {
   const [reportOpen, setReportOpen] = useState(false)
 
   const isOwner = user && spot && spot.ownerId === user.id
-  const canBook = user && user.parkingSpotNumber === null && !isOwner
+  const canBook = user && !isOwner
 
   const refreshSpot = useCallback(async () => {
     if (!spot) return
